@@ -28,6 +28,7 @@ export interface Provider {
   total_views: number
   total_contacts: number
   subscription_status: string
+  province: string
   created_at: string
 }
 
