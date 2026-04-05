@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase, Category } from '@/lib/supabase'
-import { Search, MapPin, Star, Shield, ChevronDown, ChevronUp } from 'lucide-react'
+import { Search, MapPin, Star, Shield, ChevronDown, ChevronUp, Wrench, UserSearch } from 'lucide-react'
 
 const POPULAR_SLUGS = ['plomero', 'electricista', 'gasista', 'cerrajero', 'pintor', 'albanil']
 
@@ -25,6 +25,8 @@ function getGreeting(): string {
 
 export default function HomePage() {
   const router = useRouter()
+  const [showWelcome, setShowWelcome] = useState(true)
+  const [checkingRole, setCheckingRole] = useState(true)
   const [query, setQuery] = useState('')
   const [categories, setCategories] = useState<Category[]>([])
   const [showAllCategories, setShowAllCategories] = useState(false)
@@ -35,6 +37,12 @@ export default function HomePage() {
   const [greeting, setGreeting] = useState(getGreeting())
 
   useEffect(() => {
+    // Check if user already chose their role
+    const role = localStorage.getItem('datoqdato_role')
+    if (role) {
+      setShowWelcome(false)
+    }
+    setCheckingRole(false)
     loadCategories()
     loadUser()
     let idx = 0
@@ -95,6 +103,66 @@ export default function HomePage() {
 
   const popularCategories = categories.filter(c => POPULAR_SLUGS.includes(c.slug))
   const otherCategories = categories.filter(c => !POPULAR_SLUGS.includes(c.slug))
+
+  function handleChooseClient() {
+    localStorage.setItem('datoqdato_role', 'cliente')
+    setShowWelcome(false)
+  }
+
+  function handleChoosePro() {
+    localStorage.setItem('datoqdato_role', 'profesional')
+    router.push('/registro?pro=1')
+  }
+
+  // Loading
+  if (checkingRole) {
+    return (
+      <div className="min-h-screen bg-brand-700 flex items-center justify-center">
+        <img src="/logo.png" alt="DatoqDato" className="w-24 h-24 rounded-full shadow-xl animate-pulse" />
+      </div>
+    )
+  }
+
+  // Welcome chooser
+  if (showWelcome) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-brand-600 via-brand-700 to-brand-800 flex flex-col items-center justify-center px-6">
+        <img src="/logo.png" alt="DatoqDato" className="w-28 h-28 rounded-full shadow-xl mb-6" />
+        <h1 className="text-3xl font-bold text-white text-center mb-2">Bienvenido a DatoqDato</h1>
+        <p className="text-brand-200 text-center mb-10 max-w-xs">Agenda de Oficios — Profesionales verificados cerca tuyo</p>
+
+        <div className="w-full max-w-sm space-y-4">
+          <button
+            onClick={handleChooseClient}
+            className="w-full flex items-center gap-4 p-5 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all active:scale-[0.98]"
+          >
+            <div className="w-14 h-14 bg-brand-100 rounded-xl flex items-center justify-center shrink-0">
+              <UserSearch className="w-7 h-7 text-brand-600" />
+            </div>
+            <div className="text-left">
+              <p className="font-bold text-slate-800 text-lg">Busco un servicio</p>
+              <p className="text-sm text-slate-500">Encontrá profesionales cerca tuyo</p>
+            </div>
+          </button>
+
+          <button
+            onClick={handleChoosePro}
+            className="w-full flex items-center gap-4 p-5 bg-slate-900 rounded-2xl shadow-lg hover:shadow-xl transition-all active:scale-[0.98]"
+          >
+            <div className="w-14 h-14 bg-brand-600 rounded-xl flex items-center justify-center shrink-0">
+              <Wrench className="w-7 h-7 text-white" />
+            </div>
+            <div className="text-left">
+              <p className="font-bold text-white text-lg">Soy profesional</p>
+              <p className="text-sm text-slate-400">Registrate y que te encuentren</p>
+            </div>
+          </button>
+        </div>
+
+        <p className="text-brand-300/50 text-xs mt-10">100% gratis para clientes · 30 días gratis para profesionales</p>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-brand-600 via-brand-700 to-brand-800">
@@ -223,7 +291,7 @@ export default function HomePage() {
           <p className="text-white font-bold text-sm mb-1">¿Sos profesional?</p>
           <p className="text-slate-400 text-xs mb-3">Registrate y que los clientes te encuentren</p>
           <button
-            onClick={() => router.push('/proveedor/registro')}
+            onClick={() => router.push('/registro?pro=1')}
             className="px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-xl transition-colors"
           >
             Registrarme como Profesional
