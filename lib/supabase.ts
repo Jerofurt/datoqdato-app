@@ -15,22 +15,27 @@ export interface Category {
 
 export interface Provider {
   id: string
+  user_id: string
   name: string
   phone: string
   whatsapp: string
+  email: string | null
   latitude: number
   longitude: number
   address: string
   city: string
   coverage_radius_km: number
-  avg_rating: number
+  stars: number
   total_reviews: number
   total_views: number
   total_contacts: number
-  subscription_status: string
+  subscription_status: 'trial' | 'active' | 'expired' | 'cancelled'
+  trial_ends_at: string
   province: string
   photo_url: string | null
+  visit_cost: string | null
   created_at: string
+  updated_at: string
 }
 
 export interface ProviderSearchResult {
@@ -43,22 +48,21 @@ export interface ProviderSearchResult {
   address: string
   city: string
   coverage_radius_km: number
-  avg_rating: number
+  stars: number
   total_reviews: number
   distance_km: number
   category_name: string
   category_slug: string
   keywords: string[]
   photo_url: string | null
+  visit_cost: string | null
 }
 
 export interface Review {
   id: string
   provider_id: string
-  reviewer_name: string
-  reviewer_city: string
-  rating: number
-  comment: string
-  is_verified: boolean
+  client_id: string
+  is_positive: boolean
+  comment: string | null
   created_at: string
 }

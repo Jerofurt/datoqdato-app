@@ -37,14 +37,9 @@ export default function HomePage() {
   const [greeting, setGreeting] = useState(getGreeting())
 
   useEffect(() => {
-    // Check if user already chose their role
-    const role = localStorage.getItem('datoqdato_role')
-    if (role) {
-      setShowWelcome(false)
-    }
-    setCheckingRole(false)
+    // Check if user is logged in
+    checkUser()
     loadCategories()
-    loadUser()
     let idx = 0
     const interval = setInterval(() => {
       idx = (idx + 1) % SEARCH_EXAMPLES.length
@@ -61,12 +56,16 @@ export default function HomePage() {
     if (data) setCategories(data)
   }
 
-  async function loadUser() {
+  async function checkUser() {
     const { data: { user } } = await supabase.auth.getUser()
-    if (user?.user_metadata?.name) {
-      const firstName = user.user_metadata.name.split(' ')[0]
-      setUserName(firstName)
+    if (user) {
+      setShowWelcome(false)
+      if (user.user_metadata?.name) {
+        const firstName = user.user_metadata.name.split(' ')[0]
+        setUserName(firstName)
+      }
     }
+    setCheckingRole(false)
   }
 
   function requestLocation() {
@@ -105,12 +104,10 @@ export default function HomePage() {
   const otherCategories = categories.filter(c => !POPULAR_SLUGS.includes(c.slug))
 
   function handleChooseClient() {
-    localStorage.setItem('datoqdato_role', 'cliente')
-    setShowWelcome(false)
+    router.push('/registro')
   }
 
   function handleChoosePro() {
-    localStorage.setItem('datoqdato_role', 'profesional')
     router.push('/registro?pro=1')
   }
 
@@ -160,6 +157,12 @@ export default function HomePage() {
         </div>
 
         <p className="text-brand-300/50 text-xs mt-10">100% gratis para clientes · 30 días gratis para profesionales</p>
+        <button
+          onClick={() => router.push('/login')}
+          className="mt-4 text-sm text-brand-200 font-medium hover:text-white transition-colors"
+        >
+          ¿Ya tenés cuenta? <span className="underline">Iniciá sesión</span>
+        </button>
       </div>
     )
   }
