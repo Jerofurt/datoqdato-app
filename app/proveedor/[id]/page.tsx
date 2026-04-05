@@ -102,9 +102,13 @@ export default function ProviderProfilePage({ params }: { params: Promise<{ id: 
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center text-white font-bold text-xl">
-            {initials}
-          </div>
+          {provider.photo_url ? (
+            <img src={provider.photo_url} alt={provider.name} className="w-16 h-16 rounded-2xl object-cover border-2 border-white/20" />
+          ) : (
+            <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center text-white font-bold text-xl">
+              {initials}
+            </div>
+          )}
           <div>
             <h1 className="text-xl font-bold">{provider.name}</h1>
             <p className="text-brand-200 text-sm flex items-center gap-1">

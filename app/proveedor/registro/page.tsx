@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase, Category } from '@/lib/supabase'
-import { ArrowLeft, MapPin, Plus, X, Loader2, CheckCircle, Phone, ChevronRight } from 'lucide-react'
+import { ArrowLeft, MapPin, Plus, X, Loader2, CheckCircle, Phone, ChevronRight, Camera, User } from 'lucide-react'
 
 interface SelectedCategory {
   category: Category
@@ -12,6 +12,7 @@ interface SelectedCategory {
 
 export default function ProveedorRegistroPage() {
   const router = useRouter()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [checkingAuth, setCheckingAuth] = useState(true)
@@ -19,11 +20,13 @@ export default function ProveedorRegistroPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
 
-  // Step 1: Datos básicos
+  // Step 1: Datos básicos + foto
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [whatsapp, setWhatsapp] = useState('')
   const [sameAsPhone, setSameAsPhone] = useState(true)
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
 
   // Step 2: Ubicación
   const [latitude, setLatitude] = useState<number | null>(null)
@@ -47,11 +50,10 @@ export default function ProveedorRegistroPage() {
   async function checkAuth() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
-      router.push('/registro')
+      router.push('/registro?pro=1')
       return
     }
     setUserId(user.id)
-    // Pre-fill from user metadata
     if (user.user_metadata?.name) setName(user.user_metadata.name)
     if (user.user_metadata?.phone) {
       setPhone(user.user_metadata.phone)
@@ -64,6 +66,23 @@ export default function ProveedorRegistroPage() {
   async function loadCategories() {
     const { data } = await supabase.from('categories').select('*').order('name')
     if (data) setCategories(data)
+  }
+
+  function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    
+    // Validate size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('La foto no puede pesar más de 5MB')
+      return
+    }
+
+    setPhotoFile(file)
+    const reader = new FileReader()
+    reader.onload = (ev) => setPhotoPreview(ev.target?.result as string)
+    reader.readAsDataURL(file)
+    setError('')
   }
 
   function requestLocation() {
@@ -116,6 +135,7 @@ export default function ProveedorRegistroPage() {
       if (!name.trim()) { setError('Ingresá tu nombre'); return false }
       if (!phone.trim()) { setError('Ingresá tu teléfono'); return false }
       if (!sameAsPhone && !whatsapp.trim()) { setError('Ingresá tu WhatsApp'); return false }
+      if (!photoFile) { setError('Subí una foto de perfil — es obligatoria para generar confianza'); return false }
       return true
     }
     if (s === 2) {
@@ -141,6 +161,27 @@ export default function ProveedorRegistroPage() {
     setLoading(true)
     setError('')
 
+    // Upload photo
+    let photoUrl = null
+    if (photoFile) {
+      const ext = photoFile.name.split('.').pop()
+      const fileName = `${userId}-${Date.now()}.${ext}`
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('profile-photos')
+        .upload(fileName, photoFile, { upsert: true })
+
+      if (uploadError) {
+        setLoading(false)
+        return setError('Error al subir la foto: ' + uploadError.message)
+      }
+
+      const { data: urlData } = supabase.storage
+        .from('profile-photos')
+        .getPublicUrl(fileName)
+      
+      photoUrl = urlData.publicUrl
+    }
+
     const finalWhatsapp = sameAsPhone ? phone : whatsapp
 
     // Create provider
@@ -156,6 +197,7 @@ export default function ProveedorRegistroPage() {
         address: address.trim(),
         city: city.trim(),
         coverage_radius_km: coverageRadius,
+        photo_url: photoUrl,
       })
       .select()
       .single()
@@ -221,7 +263,6 @@ export default function ProveedorRegistroPage() {
         </button>
         <h1 className="text-2xl font-bold">Registro Profesional</h1>
         <p className="text-brand-200 text-sm mt-1">Paso {step} de 3</p>
-        {/* Progress bar */}
         <div className="flex gap-2 mt-4">
           {[1, 2, 3].map(s => (
             <div
@@ -237,12 +278,44 @@ export default function ProveedorRegistroPage() {
       <div className="px-4 -mt-6">
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
 
-          {/* ══════════ STEP 1: Datos básicos ══════════ */}
+          {/* ══════════ STEP 1: Datos + Foto ══════════ */}
           {step === 1 && (
             <div className="space-y-4">
               <h2 className="text-lg font-bold text-slate-800 mb-1">Tus datos</h2>
               <p className="text-sm text-slate-400 mb-4">Así te van a ver los clientes</p>
 
+              {/* Photo upload */}
+              <div className="flex flex-col items-center mb-2">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="relative w-24 h-24 rounded-full overflow-hidden border-3 border-dashed border-slate-200 hover:border-brand-400 transition-colors bg-slate-50 flex items-center justify-center group"
+                >
+                  {photoPreview ? (
+                    <img src={photoPreview} alt="Foto" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="flex flex-col items-center gap-1">
+                      <Camera className="w-6 h-6 text-slate-400 group-hover:text-brand-500" />
+                      <span className="text-[10px] text-slate-400 group-hover:text-brand-500">Subir foto</span>
+                    </div>
+                  )}
+                  {photoPreview && (
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Camera className="w-6 h-6 text-white" />
+                    </div>
+                  )}
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoSelect}
+                  className="hidden"
+                />
+                <p className="text-xs text-slate-400 mt-2">Foto de perfil <span className="text-red-400 font-semibold">*obligatoria</span></p>
+                <p className="text-[11px] text-slate-400">Los clientes confían más cuando ven tu cara</p>
+              </div>
+
+              {/* Name */}
               <div>
                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">
                   Nombre completo o del negocio
@@ -256,6 +329,7 @@ export default function ProveedorRegistroPage() {
                 />
               </div>
 
+              {/* Phone */}
               <div>
                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">
                   Teléfono
@@ -339,7 +413,6 @@ export default function ProveedorRegistroPage() {
                 <p className="text-[11px] text-slate-400 mt-1">No se muestra públicamente, solo para calcular cercanía</p>
               </div>
 
-              {/* GPS */}
               <button
                 onClick={requestLocation}
                 className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition-all ${
@@ -357,7 +430,6 @@ export default function ProveedorRegistroPage() {
                 {locationStatus === 'error' && 'Error — intentá de nuevo'}
               </button>
 
-              {/* Coverage radius */}
               <div>
                 <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5 block">
                   Radio de cobertura: {coverageRadius} km
@@ -387,7 +459,6 @@ export default function ProveedorRegistroPage() {
               <h2 className="text-lg font-bold text-slate-800 mb-1">¿Qué hacés?</h2>
               <p className="text-sm text-slate-400 mb-4">Elegí hasta 2 categorías y agregá palabras clave</p>
 
-              {/* Selected categories */}
               {selectedCategories.map((sc) => (
                 <div key={sc.category.id} className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
                   <div className="flex items-center justify-between mb-3">
@@ -397,7 +468,6 @@ export default function ProveedorRegistroPage() {
                     </button>
                   </div>
 
-                  {/* Keywords */}
                   <div className="flex flex-wrap gap-1.5 mb-3">
                     {sc.keywords.map((kw) => (
                       <span
@@ -436,7 +506,6 @@ export default function ProveedorRegistroPage() {
                 </div>
               ))}
 
-              {/* Add category button */}
               {selectedCategories.length < 2 && (
                 <button
                   onClick={() => setShowCategoryPicker(true)}
@@ -447,7 +516,6 @@ export default function ProveedorRegistroPage() {
                 </button>
               )}
 
-              {/* Category picker modal */}
               {showCategoryPicker && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
                   <div className="bg-white rounded-t-3xl w-full max-h-[70vh] overflow-hidden">
@@ -476,7 +544,6 @@ export default function ProveedorRegistroPage() {
                 </div>
               )}
 
-              {/* Trial info */}
               <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl">
                 <p className="text-sm text-emerald-800 font-medium">🎉 30 días gratis</p>
                 <p className="text-xs text-emerald-600 mt-0.5">Después $5.000/mes. Sin comisiones por trabajo. Cancelás cuando quieras.</p>
@@ -491,7 +558,7 @@ export default function ProveedorRegistroPage() {
             </div>
           )}
 
-          {/* Navigation buttons */}
+          {/* Navigation */}
           <div className="mt-6 flex gap-3">
             {step > 1 && (
               <button

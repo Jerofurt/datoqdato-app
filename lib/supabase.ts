@@ -29,6 +29,7 @@ export interface Provider {
   total_contacts: number
   subscription_status: string
   province: string
+  photo_url: string | null
   created_at: string
 }
 
@@ -48,6 +49,7 @@ export interface ProviderSearchResult {
   category_name: string
   category_slug: string
   keywords: string[]
+  photo_url: string | null
 }
 
 export interface Review {

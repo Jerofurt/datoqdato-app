@@ -216,9 +216,13 @@ function SearchContent() {
                 >
                   <div className="flex items-start gap-3">
                     {/* Avatar */}
-                    <div className="w-12 h-12 rounded-xl bg-brand-100 flex items-center justify-center text-brand-600 font-bold text-sm shrink-0">
-                      {provider.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                    </div>
+                    {provider.photo_url ? (
+                      <img src={provider.photo_url} alt={provider.name} className="w-12 h-12 rounded-xl object-cover shrink-0" />
+                    ) : (
+                      <div className="w-12 h-12 rounded-xl bg-brand-100 flex items-center justify-center text-brand-600 font-bold text-sm shrink-0">
+                        {provider.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                      </div>
+                    )}
                     {/* Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
