@@ -33,8 +33,6 @@ function StarsDisplay({ value }: { value: number }) {
       ))}
     </div>
   )
-    </div>
-  )
 }
 
 function StatusBadge({ status, trialEnds }: { status: string; trialEnds: string }) {
