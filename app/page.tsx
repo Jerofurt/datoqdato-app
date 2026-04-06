@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase, Category } from '@/lib/supabase'
-import { Search, MapPin, Star, Shield, ChevronDown, ChevronUp, Wrench, UserSearch } from 'lucide-react'
+import { Search, MapPin, Star, Shield, ChevronDown, ChevronUp, Wrench, UserSearch, LogOut } from 'lucide-react'
 
 const POPULAR_SLUGS = ['plomero', 'electricista', 'gasista', 'cerrajero', 'pintor', 'albanil']
 
@@ -34,12 +34,18 @@ export default function HomePage() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [placeholder, setPlaceholder] = useState(SEARCH_EXAMPLES[0])
   const [userName, setUserName] = useState<string | null>(null)
+  const [isProvider, setIsProvider] = useState(false)
   const [greeting, setGreeting] = useState(getGreeting())
 
   useEffect(() => {
-    // Check if user is logged in
-    checkUser()
+    // Check if user already chose their role
+    const role = localStorage.getItem('datoqdato_role')
+    if (role) {
+      setShowWelcome(false)
+    }
+    setCheckingRole(false)
     loadCategories()
+    loadUser()
     let idx = 0
     const interval = setInterval(() => {
       idx = (idx + 1) % SEARCH_EXAMPLES.length
@@ -56,16 +62,28 @@ export default function HomePage() {
     if (data) setCategories(data)
   }
 
-  async function checkUser() {
+  async function loadUser() {
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
-      setShowWelcome(false)
       if (user.user_metadata?.name) {
         const firstName = user.user_metadata.name.split(' ')[0]
         setUserName(firstName)
       }
+      // Check if user is a provider
+      const { data: prov } = await supabase
+        .from('providers')
+        .select('id')
+        .eq('user_id', user.id)
+        .single()
+      if (prov) setIsProvider(true)
     }
-    setCheckingRole(false)
+  }
+
+  async function handleLogout() {
+    await supabase.auth.signOut()
+    localStorage.removeItem('datoqdato_role')
+    setUserName(null)
+    setIsProvider(false)
   }
 
   function requestLocation() {
@@ -104,10 +122,12 @@ export default function HomePage() {
   const otherCategories = categories.filter(c => !POPULAR_SLUGS.includes(c.slug))
 
   function handleChooseClient() {
-    router.push('/registro')
+    localStorage.setItem('datoqdato_role', 'cliente')
+    setShowWelcome(false)
   }
 
   function handleChoosePro() {
+    localStorage.setItem('datoqdato_role', 'profesional')
     router.push('/registro?pro=1')
   }
 
@@ -157,12 +177,6 @@ export default function HomePage() {
         </div>
 
         <p className="text-brand-300/50 text-xs mt-10">100% gratis para clientes · 30 días gratis para profesionales</p>
-        <button
-          onClick={() => router.push('/login')}
-          className="mt-4 text-sm text-brand-200 font-medium hover:text-white transition-colors"
-        >
-          ¿Ya tenés cuenta? <span className="underline">Iniciá sesión</span>
-        </button>
       </div>
     )
   }
@@ -173,13 +187,22 @@ export default function HomePage() {
       <header className="pt-10 pb-6 px-4 text-white">
         <div className="flex items-center gap-4">
           <img src="/logo.png" alt="DatoqDato" className="w-20 h-20 rounded-full shadow-lg shrink-0" />
-          <div>
+          <div className="flex-1">
             <h1 className="text-xl font-bold">
               {greeting}{userName ? `, ${userName}` : ''} 👋
             </h1>
             <p className="text-brand-200 text-xs mt-0.5">Agenda de Oficios</p>
             <p className="text-white/70 text-sm mt-1">¿En qué podemos ayudarte hoy?</p>
           </div>
+          {userName && (
+            <button
+              onClick={handleLogout}
+              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
+              title="Cerrar sesión"
+            >
+              <LogOut className="w-5 h-5 text-white/70" />
+            </button>
+          )}
         </div>
       </header>
 
@@ -291,14 +314,29 @@ export default function HomePage() {
 
         {/* CTA providers */}
         <div className="mt-6 p-4 bg-slate-900 rounded-2xl text-center">
-          <p className="text-white font-bold text-sm mb-1">¿Sos profesional?</p>
-          <p className="text-slate-400 text-xs mb-3">Registrate y que los clientes te encuentren</p>
-          <button
-            onClick={() => router.push('/registro?pro=1')}
-            className="px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-xl transition-colors"
-          >
-            Registrarme como Profesional
-          </button>
+          {isProvider ? (
+            <>
+              <p className="text-white font-bold text-sm mb-1">Tu panel profesional</p>
+              <p className="text-slate-400 text-xs mb-3">Revisá tus estrellas, reseñas y contactos</p>
+              <button
+                onClick={() => router.push('/dashboard')}
+                className="px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-xl transition-colors"
+              >
+                Mi Panel
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="text-white font-bold text-sm mb-1">¿Sos profesional?</p>
+              <p className="text-slate-400 text-xs mb-3">Registrate y que los clientes te encuentren</p>
+              <button
+                onClick={() => router.push('/registro?pro=1')}
+                className="px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-xl transition-colors"
+              >
+                Registrarme como Profesional
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
