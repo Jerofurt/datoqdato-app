@@ -392,7 +392,7 @@ export default function HomePage() {
             </button>
             <span className="text-slate-200">|</span>
             <a
-              href="mailto:soporte@datoqdato.com"
+              href="mailto:info@ailosofy.com"
               className="text-xs text-slate-400 hover:text-brand-600 transition-colors"
             >
               Contacto
@@ -404,6 +404,14 @@ export default function HomePage() {
           <p className="text-[10px] text-slate-300 text-center mt-1">
             © {new Date().getFullYear()} DatoQDato — Todos los derechos reservados
           </p>
+          <a
+            href="https://ailosofy.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 flex items-center justify-center gap-1.5 text-xs font-semibold text-brand-600 hover:text-brand-700 transition-colors"
+          >
+            ⚡ Powered by AiLosofy.com
+          </a>
         </footer>
       </div>
     </div>
