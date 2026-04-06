@@ -20,9 +20,18 @@ function SearchContent() {
   const lng = searchParams.get('lng') ? parseFloat(searchParams.get('lng')!) : null
 
   useEffect(() => {
+    checkAuthAndLoad()
+  }, [])
+
+  async function checkAuthAndLoad() {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      router.push('/login?redirect=/buscar')
+      return
+    }
     loadCategories()
     doSearch()
-  }, [])
+  }
 
   async function loadCategories() {
     const { data } = await supabase.from('categories').select('*').order('name')

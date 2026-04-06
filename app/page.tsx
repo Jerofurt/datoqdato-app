@@ -25,8 +25,8 @@ function getGreeting(): string {
 
 export default function HomePage() {
   const router = useRouter()
-  const [showWelcome, setShowWelcome] = useState(true)
-  const [checkingRole, setCheckingRole] = useState(true)
+  const [checkingAuth, setCheckingAuth] = useState(true)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [query, setQuery] = useState('')
   const [categories, setCategories] = useState<Category[]>([])
   const [showAllCategories, setShowAllCategories] = useState(false)
@@ -38,52 +38,39 @@ export default function HomePage() {
   const [greeting, setGreeting] = useState(getGreeting())
 
   useEffect(() => {
-    // Check if user already chose their role
-    const role = localStorage.getItem('datoqdato_role')
-    if (role) {
-      setShowWelcome(false)
-    }
-    setCheckingRole(false)
-    loadCategories()
-    loadUser()
-    let idx = 0
+    checkAuth()
     const interval = setInterval(() => {
-      idx = (idx + 1) % SEARCH_EXAMPLES.length
-      setPlaceholder(SEARCH_EXAMPLES[idx])
+      setPlaceholder(SEARCH_EXAMPLES[Math.floor(Math.random() * SEARCH_EXAMPLES.length)])
     }, 3000)
     return () => clearInterval(interval)
   }, [])
 
-  async function loadCategories() {
-    const { data } = await supabase
-      .from('categories')
-      .select('*')
-      .order('name')
-    if (data) setCategories(data)
-  }
-
-  async function loadUser() {
+  async function checkAuth() {
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
+      setIsLoggedIn(true)
       if (user.user_metadata?.name) {
-        const firstName = user.user_metadata.name.split(' ')[0]
-        setUserName(firstName)
+        setUserName(user.user_metadata.name.split(' ')[0])
       }
-      // Check if user is a provider
+      // Check if provider
       const { data: prov } = await supabase
         .from('providers')
         .select('id')
         .eq('user_id', user.id)
-        .single()
+        .maybeSingle()
       if (prov) setIsProvider(true)
+
+      // Load categories
+      const { data: cats } = await supabase.from('categories').select('*').order('name')
+      if (cats) setCategories(cats)
     }
+    setCheckingAuth(false)
   }
 
   async function handleLogout() {
     await supabase.auth.signOut()
     localStorage.removeItem('datoqdato_role')
-    setUserName(null)
-    setIsProvider(false)
+    window.location.reload()
   }
 
   function requestLocation() {
@@ -121,18 +108,8 @@ export default function HomePage() {
   const popularCategories = categories.filter(c => POPULAR_SLUGS.includes(c.slug))
   const otherCategories = categories.filter(c => !POPULAR_SLUGS.includes(c.slug))
 
-  function handleChooseClient() {
-    localStorage.setItem('datoqdato_role', 'cliente')
-    setShowWelcome(false)
-  }
-
-  function handleChoosePro() {
-    localStorage.setItem('datoqdato_role', 'profesional')
-    router.push('/registro?pro=1')
-  }
-
-  // Loading
-  if (checkingRole) {
+  // ==================== LOADING ====================
+  if (checkingAuth) {
     return (
       <div className="min-h-screen bg-brand-700 flex items-center justify-center">
         <img src="/logo.png" alt="DatoqDato" className="w-24 h-24 rounded-full shadow-xl animate-pulse" />
@@ -140,8 +117,8 @@ export default function HomePage() {
     )
   }
 
-  // Welcome chooser
-  if (showWelcome) {
+  // ==================== NOT LOGGED IN: WELCOME SCREEN ====================
+  if (!isLoggedIn) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-brand-600 via-brand-700 to-brand-800 flex flex-col items-center justify-center px-6">
         <img src="/logo.png" alt="DatoqDato" className="w-28 h-28 rounded-full shadow-xl mb-6" />
@@ -150,7 +127,7 @@ export default function HomePage() {
 
         <div className="w-full max-w-sm space-y-4">
           <button
-            onClick={handleChooseClient}
+            onClick={() => router.push('/login?redirect=/')}
             className="w-full flex items-center gap-4 p-5 bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all active:scale-[0.98]"
           >
             <div className="w-14 h-14 bg-brand-100 rounded-xl flex items-center justify-center shrink-0">
@@ -158,12 +135,12 @@ export default function HomePage() {
             </div>
             <div className="text-left">
               <p className="font-bold text-slate-800 text-lg">Busco un servicio</p>
-              <p className="text-sm text-slate-500">Encontrá profesionales cerca tuyo</p>
+              <p className="text-sm text-slate-500">Ingresá para encontrar profesionales</p>
             </div>
           </button>
 
           <button
-            onClick={handleChoosePro}
+            onClick={() => router.push('/login?redirect=/proveedor/registro')}
             className="w-full flex items-center gap-4 p-5 bg-slate-900 rounded-2xl shadow-lg hover:shadow-xl transition-all active:scale-[0.98]"
           >
             <div className="w-14 h-14 bg-brand-600 rounded-xl flex items-center justify-center shrink-0">
@@ -171,16 +148,26 @@ export default function HomePage() {
             </div>
             <div className="text-left">
               <p className="font-bold text-white text-lg">Soy profesional</p>
-              <p className="text-sm text-slate-400">Registrate y que te encuentren</p>
+              <p className="text-sm text-slate-400">Ingresá para gestionar tu perfil</p>
             </div>
           </button>
-        </div>
 
-        <p className="text-brand-300/50 text-xs mt-10">100% gratis para clientes · 30 días gratis para profesionales</p>
+          {/* Login link for existing users */}
+          <p className="text-center text-sm text-brand-200 mt-6">
+            ¿Ya tenés cuenta?{' '}
+            <button
+              onClick={() => router.push('/login')}
+              className="font-semibold text-white underline"
+            >
+              Iniciar sesión
+            </button>
+          </p>
+        </div>
       </div>
     )
   }
 
+  // ==================== LOGGED IN: FULL HOME ====================
   return (
     <div className="min-h-screen bg-gradient-to-b from-brand-600 via-brand-700 to-brand-800">
       {/* Header */}
@@ -194,15 +181,13 @@ export default function HomePage() {
             <p className="text-brand-200 text-xs mt-0.5">Agenda de Oficios</p>
             <p className="text-white/70 text-sm mt-1">¿En qué podemos ayudarte hoy?</p>
           </div>
-          {userName && (
-            <button
-              onClick={handleLogout}
-              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
-              title="Cerrar sesión"
-            >
-              <LogOut className="w-5 h-5 text-white/70" />
-            </button>
-          )}
+          <button
+            onClick={handleLogout}
+            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors"
+            title="Cerrar sesión"
+          >
+            <LogOut className="w-5 h-5 text-white/70" />
+          </button>
         </div>
       </header>
 
@@ -215,104 +200,100 @@ export default function HomePage() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={placeholder}
-            className="w-full pl-12 pr-20 py-4 rounded-2xl bg-white text-slate-800 placeholder-slate-400 text-base shadow-xl focus:outline-none focus:ring-2 focus:ring-brand-300"
+            className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white shadow-lg text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-300"
           />
-          {query.trim() && (
-            <button
-              type="submit"
-              className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-2 bg-brand-600 text-white text-sm font-semibold rounded-xl"
-            >
-              Buscar
-            </button>
-          )}
         </form>
-        <p className="text-brand-200/60 text-xs text-center mt-2">
-          Escribí lo que necesitás, ej: &quot;plomero&quot;, &quot;arreglar aire&quot;, &quot;pasear perro&quot;
-        </p>
-
-        {/* Location */}
-        <button
-          onClick={requestLocation}
-          className={`mt-3 w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-medium transition-all ${
-            locationStatus === 'granted'
-              ? 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/30'
-              : locationStatus === 'denied'
-              ? 'bg-red-500/20 text-red-200 border border-red-400/30'
-              : 'bg-white/10 text-white/80 border border-white/20 hover:bg-white/20'
-          }`}
-        >
-          <MapPin className="w-4 h-4" />
-          {locationStatus === 'idle' && 'Activar mi ubicación para buscar cerca'}
-          {locationStatus === 'loading' && 'Obteniendo ubicación...'}
-          {locationStatus === 'granted' && '✓ Ubicación activada — mostramos los más cercanos'}
-          {locationStatus === 'denied' && 'Ubicación denegada — buscá por zona'}
-        </button>
       </div>
 
-      {/* Content */}
-      <div className="bg-white rounded-t-3xl min-h-[50vh] px-4 pt-6 pb-24">
+      {/* Location */}
+      <div className="px-4 pb-4">
+        {locationStatus === 'idle' && (
+          <button
+            onClick={requestLocation}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-white/10 text-white/90 text-sm hover:bg-white/15 transition-colors"
+          >
+            <MapPin className="w-4 h-4" />
+            Activar mi ubicación para buscar cerca
+          </button>
+        )}
+        {locationStatus === 'loading' && (
+          <div className="text-center text-brand-200 text-sm py-3">Obteniendo ubicación...</div>
+        )}
+        {locationStatus === 'granted' && (
+          <div className="flex items-center justify-center gap-2 text-emerald-300 text-sm py-2">
+            <MapPin className="w-4 h-4" />
+            Ubicación activada
+          </div>
+        )}
+        {locationStatus === 'denied' && (
+          <div className="text-center text-red-300 text-sm py-2">
+            No pudimos acceder a tu ubicación
+          </div>
+        )}
+      </div>
+
+      {/* Main content */}
+      <div className="bg-slate-50 rounded-t-3xl min-h-[50vh] px-4 pt-6 pb-8">
         {/* Popular categories */}
-        <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">Los más buscados</h2>
-        <div className="grid grid-cols-3 gap-2 mb-4">
+        <h3 className="font-bold text-slate-700 text-sm mb-3">Los más buscados</h3>
+        <div className="flex flex-wrap gap-2 mb-4">
           {popularCategories.map((cat) => (
             <button
               key={cat.id}
               onClick={() => handleCategoryClick(cat.slug)}
-              className="flex flex-col items-center gap-2 p-3 bg-slate-50 hover:bg-brand-50 border border-slate-100 hover:border-brand-200 rounded-2xl text-center transition-all active:scale-[0.97]"
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-white rounded-xl border border-slate-100 shadow-sm text-sm font-medium text-slate-700 hover:border-brand-200 hover:bg-brand-50 transition-colors active:scale-[0.97]"
             >
-              <span className="text-2xl"><CategoryIcon name={cat.icon} /></span>
-              <span className="text-xs font-medium text-slate-600 leading-tight">{cat.name}</span>
+              <CategoryIcon name={cat.icon} />
+              {cat.name}
             </button>
           ))}
         </div>
 
-        {/* Show more */}
-        <button
-          onClick={() => setShowAllCategories(!showAllCategories)}
-          className="w-full flex items-center justify-center gap-1 py-2 text-sm font-medium text-brand-600 hover:text-brand-700 transition-colors"
-        >
-          {showAllCategories ? (
-            <>Menos categorías <ChevronUp className="w-4 h-4" /></>
-          ) : (
-            <>Ver todas las categorías ({otherCategories.length} más) <ChevronDown className="w-4 h-4" /></>
-          )}
-        </button>
-
-        {showAllCategories && (
-          <div className="grid grid-cols-2 gap-2 mt-2 mb-4">
-            {otherCategories.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => handleCategoryClick(cat.slug)}
-                className="flex items-center gap-3 p-3 bg-slate-50 hover:bg-brand-50 border border-slate-100 hover:border-brand-200 rounded-xl text-left transition-all active:scale-[0.98]"
-              >
-                <span className="text-lg"><CategoryIcon name={cat.icon} /></span>
-                <span className="text-xs font-medium text-slate-600 leading-tight">{cat.name}</span>
-              </button>
-            ))}
-          </div>
+        {/* All categories toggle */}
+        {otherCategories.length > 0 && (
+          <>
+            <button
+              onClick={() => setShowAllCategories(!showAllCategories)}
+              className="flex items-center gap-1 text-sm text-brand-600 font-semibold mb-3"
+            >
+              {showAllCategories ? 'Ocultar' : `Ver todas las categorías (${otherCategories.length} más)`}
+              {showAllCategories ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+            {showAllCategories && (
+              <div className="flex flex-wrap gap-2 mb-4">
+                {otherCategories.map((cat) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => handleCategoryClick(cat.slug)}
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-white rounded-xl border border-slate-100 shadow-sm text-sm font-medium text-slate-700 hover:border-brand-200 hover:bg-brand-50 transition-colors active:scale-[0.97]"
+                  >
+                    <CategoryIcon name={cat.icon} />
+                    {cat.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
         )}
 
-        <div className="border-t border-slate-100 my-5"></div>
-
-        {/* Value props */}
-        <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3">¿Por qué DatoqDato?</h2>
-        <div className="space-y-2.5">
-          <div className="flex items-center gap-3 p-3 bg-emerald-50 rounded-xl">
-            <Shield className="w-5 h-5 text-emerald-600 shrink-0" />
-            <p className="text-sm text-emerald-800">Reseñas verificadas por teléfono — imposible inventar</p>
+        {/* Trust badges */}
+        <div className="mt-4 space-y-2">
+          <h3 className="font-bold text-slate-700 text-sm mb-3">¿Por qué DatoqDato?</h3>
+          <div className="flex items-start gap-3 p-3 bg-white rounded-xl border border-slate-100">
+            <Shield className="w-5 h-5 text-brand-600 shrink-0 mt-0.5" />
+            <p className="text-sm text-slate-600">Reseñas verificadas — imposible inventar</p>
           </div>
-          <div className="flex items-center gap-3 p-3 bg-brand-50 rounded-xl">
-            <MapPin className="w-5 h-5 text-brand-600 shrink-0" />
-            <p className="text-sm text-brand-800">Resultados ordenados por cercanía a tu ubicación</p>
+          <div className="flex items-start gap-3 p-3 bg-white rounded-xl border border-slate-100">
+            <MapPin className="w-5 h-5 text-brand-600 shrink-0 mt-0.5" />
+            <p className="text-sm text-slate-600">Resultados ordenados por cercanía a tu ubicación</p>
           </div>
-          <div className="flex items-center gap-3 p-3 bg-amber-50 rounded-xl">
-            <Star className="w-5 h-5 text-amber-600 shrink-0" />
-            <p className="text-sm text-amber-800">100% gratis para clientes — siempre</p>
+          <div className="flex items-start gap-3 p-3 bg-amber-50 rounded-xl border border-amber-100">
+            <Star className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+            <p className="text-sm text-amber-800">Sistema de estrellas 0-10 — difícil de ganar, fácil de perder</p>
           </div>
         </div>
 
-        {/* CTA providers */}
+        {/* CTA providers / dashboard */}
         <div className="mt-6 p-4 bg-slate-900 rounded-2xl text-center">
           {isProvider ? (
             <>
@@ -330,7 +311,7 @@ export default function HomePage() {
               <p className="text-white font-bold text-sm mb-1">¿Sos profesional?</p>
               <p className="text-slate-400 text-xs mb-3">Registrate y que los clientes te encuentren</p>
               <button
-                onClick={() => router.push('/registro?pro=1')}
+                onClick={() => router.push('/proveedor/registro')}
                 className="px-6 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-xl transition-colors"
               >
                 Registrarme como Profesional
@@ -344,28 +325,13 @@ export default function HomePage() {
 }
 
 function CategoryIcon({ name }: { name: string }) {
-  const iconMap: Record<string, string> = {
-    'droplets': '🔧',
-    'zap': '⚡',
-    'flame': '🔥',
-    'paintbrush': '🎨',
-    'brick-wall': '🧱',
-    'key-round': '🔑',
-    'snowflake': '❄️',
-    'trees': '🌳',
-    'bug': '🐛',
-    'truck': '🚛',
-    'sparkles': '✨',
-    'smartphone': '📱',
-    'monitor': '💻',
-    'cpu': '🔌',
-    'dog': '🐕',
-    'paw-print': '🐾',
-    'axe': '🪓',
-    'square': '🪟',
-    'home': '🏠',
-    'anvil': '⚒️',
-    'wrench': '🔧',
+  const icons: Record<string, string> = {
+    droplets: '🔧', zap: '⚡', flame: '🔥', paintbrush: '🎨',
+    'brick-wall': '🧱', 'key-round': '🔑', snowflake: '❄️',
+    trees: '🌳', bug: '🐛', truck: '🚚', sparkles: '✨',
+    smartphone: '📱', monitor: '💻', cpu: '🔌', dog: '🐕',
+    'paw-print': '🐾', axe: '🪓', square: '🪟', home: '🏠',
+    anvil: '⚒️', wrench: '🔧',
   }
-  return <>{iconMap[name] || '🔧'}</>
+  return <span className="text-base">{icons[name] || '🔧'}</span>
 }

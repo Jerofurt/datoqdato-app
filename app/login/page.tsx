@@ -1,12 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { ArrowLeft, Mail, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Suspense } from 'react'
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirect = searchParams.get('redirect') || '/'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -38,14 +41,14 @@ export default function LoginPage() {
       return setError(authError.message)
     }
 
-    router.push('/')
+    router.push(redirect)
   }
 
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
       <div className="bg-brand-600 text-white px-4 pt-4 pb-12">
-        <button onClick={() => router.back()} className="p-1 mb-4">
+        <button onClick={() => router.push('/')} className="p-1 mb-4">
           <ArrowLeft className="w-5 h-5" />
         </button>
         <h1 className="text-2xl font-bold">Iniciar sesión</h1>
@@ -128,7 +131,7 @@ export default function LoginPage() {
             ¿No tenés cuenta?{' '}
             <button
               type="button"
-              onClick={() => router.push('/registro')}
+              onClick={() => router.push('/registro?redirect=' + encodeURIComponent(redirect))}
               className="font-semibold text-brand-600"
             >
               Registrate gratis
@@ -137,5 +140,17 @@ export default function LoginPage() {
         </form>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-2 border-brand-600 border-t-transparent rounded-full" />
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   )
 }
