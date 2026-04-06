@@ -23,6 +23,34 @@ function getGreeting(): string {
   return 'Buenas noches'
 }
 
+const ZONES = [
+  { name: 'San Fernando', lat: -34.4425, lng: -58.5567 },
+  { name: 'San Isidro', lat: -34.4712, lng: -58.5276 },
+  { name: 'Tigre', lat: -34.4260, lng: -58.5797 },
+  { name: 'Vicente López', lat: -34.5268, lng: -58.4735 },
+  { name: 'Martínez', lat: -34.4921, lng: -58.5058 },
+  { name: 'Olivos', lat: -34.5106, lng: -58.4981 },
+  { name: 'Beccar', lat: -34.4614, lng: -58.5419 },
+  { name: 'San Fernando (centro)', lat: -34.4419, lng: -58.5594 },
+  { name: 'Pilar', lat: -34.4588, lng: -58.9141 },
+  { name: 'Nordelta', lat: -34.4050, lng: -58.6500 },
+  { name: 'Escobar', lat: -34.3476, lng: -58.7955 },
+  { name: 'Capital Federal', lat: -34.6037, lng: -58.3816 },
+  { name: 'Palermo', lat: -34.5800, lng: -58.4300 },
+  { name: 'Belgrano', lat: -34.5627, lng: -58.4568 },
+  { name: 'Recoleta', lat: -34.5889, lng: -58.3938 },
+  { name: 'Núñez', lat: -34.5452, lng: -58.4562 },
+  { name: 'Caballito', lat: -34.6186, lng: -58.4375 },
+  { name: 'Flores', lat: -34.6345, lng: -58.4630 },
+  { name: 'Avellaneda', lat: -34.6624, lng: -58.3654 },
+  { name: 'Quilmes', lat: -34.7206, lng: -58.2543 },
+  { name: 'Lanús', lat: -34.6994, lng: -58.3871 },
+  { name: 'Lomas de Zamora', lat: -34.7614, lng: -58.3999 },
+  { name: 'La Plata', lat: -34.9205, lng: -57.9536 },
+  { name: 'Morón', lat: -34.6504, lng: -58.6177 },
+  { name: 'Merlo', lat: -34.6632, lng: -58.7276 },
+]
+
 export default function HomePage() {
   const router = useRouter()
   const [checkingAuth, setCheckingAuth] = useState(true)
@@ -32,6 +60,8 @@ export default function HomePage() {
   const [showAllCategories, setShowAllCategories] = useState(false)
   const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'granted' | 'denied'>('idle')
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [showManualLocation, setShowManualLocation] = useState(false)
+  const [locationName, setLocationName] = useState('')
   const [placeholder, setPlaceholder] = useState(SEARCH_EXAMPLES[0])
   const [userName, setUserName] = useState<string | null>(null)
   const [isProvider, setIsProvider] = useState(false)
@@ -207,14 +237,22 @@ export default function HomePage() {
 
       {/* Location */}
       <div className="px-4 pb-4">
-        {locationStatus === 'idle' && (
-          <button
-            onClick={requestLocation}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-white/10 text-white/90 text-sm hover:bg-white/15 transition-colors"
-          >
-            <MapPin className="w-4 h-4" />
-            Activar mi ubicación para buscar cerca
-          </button>
+        {locationStatus === 'idle' && !showManualLocation && (
+          <div className="space-y-2">
+            <button
+              onClick={requestLocation}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-white/10 text-white/90 text-sm hover:bg-white/15 transition-colors"
+            >
+              <MapPin className="w-4 h-4" />
+              Activar mi ubicación (GPS)
+            </button>
+            <button
+              onClick={() => setShowManualLocation(true)}
+              className="w-full text-center text-brand-200 text-xs underline"
+            >
+              O elegí tu zona manualmente
+            </button>
+          </div>
         )}
         {locationStatus === 'loading' && (
           <div className="text-center text-brand-200 text-sm py-3">Obteniendo ubicación...</div>
@@ -222,12 +260,31 @@ export default function HomePage() {
         {locationStatus === 'granted' && (
           <div className="flex items-center justify-center gap-2 text-emerald-300 text-sm py-2">
             <MapPin className="w-4 h-4" />
-            Ubicación activada
+            {locationName || 'Ubicación activada'}
           </div>
         )}
-        {locationStatus === 'denied' && (
-          <div className="text-center text-red-300 text-sm py-2">
-            No pudimos acceder a tu ubicación
+        {(locationStatus === 'denied' || showManualLocation) && locationStatus !== 'granted' && (
+          <div className="bg-white/10 rounded-xl p-3">
+            {locationStatus === 'denied' && (
+              <p className="text-xs text-red-300 mb-2 text-center">No pudimos acceder al GPS</p>
+            )}
+            <p className="text-xs text-brand-200 mb-2 text-center">Elegí tu zona:</p>
+            <div className="flex flex-wrap gap-1.5 justify-center max-h-32 overflow-y-auto">
+              {ZONES.map((zone) => (
+                <button
+                  key={zone.name}
+                  onClick={() => {
+                    setUserLocation({ lat: zone.lat, lng: zone.lng })
+                    setLocationName(zone.name)
+                    setLocationStatus('granted')
+                    setShowManualLocation(false)
+                  }}
+                  className="px-3 py-1.5 bg-white/15 hover:bg-white/25 text-white text-xs rounded-lg transition-colors"
+                >
+                  {zone.name}
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -319,6 +376,35 @@ export default function HomePage() {
             </>
           )}
         </div>
+
+        {/* Footer */}
+        <footer className="mt-8 pt-6 border-t border-slate-200 pb-4">
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <img src="/logo.png" alt="DatoqDato" className="w-8 h-8 rounded-full" />
+            <span className="font-bold text-slate-700 text-sm">DatoQDato</span>
+          </div>
+          <div className="flex justify-center gap-4 mb-3">
+            <button
+              onClick={() => router.push('/terminos')}
+              className="text-xs text-slate-400 hover:text-brand-600 transition-colors"
+            >
+              Términos y Condiciones
+            </button>
+            <span className="text-slate-200">|</span>
+            <a
+              href="mailto:soporte@datoqdato.com"
+              className="text-xs text-slate-400 hover:text-brand-600 transition-colors"
+            >
+              Contacto
+            </a>
+          </div>
+          <p className="text-[10px] text-slate-300 text-center">
+            DatoQDato es un directorio de servicios. No somos parte de la relación entre cliente y profesional.
+          </p>
+          <p className="text-[10px] text-slate-300 text-center mt-1">
+            © {new Date().getFullYear()} DatoQDato — Todos los derechos reservados
+          </p>
+        </footer>
       </div>
     </div>
   )
