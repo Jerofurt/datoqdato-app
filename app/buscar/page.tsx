@@ -62,7 +62,7 @@ function SearchContent() {
         const distDiff = a.distance_km - b.distance_km
         if (Math.abs(distDiff) > 1) return distDiff
         // Secondary: rating (higher first)
-        return b.avg_rating - a.avg_rating
+        return b.stars - a.stars
       })
       setResults(sorted)
     }
@@ -232,10 +232,10 @@ function SearchContent() {
                         >
                           {provider.name}
                         </button>
-                        {provider.avg_rating > 0 && (
+                        {provider.stars > 0 && (
                           <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-0.5">
                             <Star className="w-3 h-3 fill-current" />
-                            {provider.avg_rating.toFixed(1)}
+                            {provider.stars.toFixed(1)}/10
                           </span>
                         )}
                       </div>
