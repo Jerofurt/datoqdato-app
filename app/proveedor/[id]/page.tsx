@@ -11,30 +11,29 @@ interface ProviderCategory {
   categories: { name: string; slug: string }
 }
 
-// Star display component (0-10 scale, shows filled/half/empty)
+// Star display component (0-10 scale, 10 real stars)
 function StarsDisplay({ value, size = 'md' }: { value: number; size?: 'sm' | 'md' | 'lg' }) {
-  const sizeClass = size === 'lg' ? 'w-6 h-6' : size === 'md' ? 'w-4 h-4' : 'w-3.5 h-3.5'
-  // Map 0-10 to 0-5 stars for visual display
-  const mapped = value / 2
-  const full = Math.floor(mapped)
-  const hasHalf = mapped - full >= 0.3
-  const empty = 5 - full - (hasHalf ? 1 : 0)
+  const sizeClass = size === 'lg' ? 'w-5 h-5' : size === 'md' ? 'w-4 h-4' : 'w-3 h-3'
+  const full = Math.floor(value)
+  const fraction = value - full
+  const hasPartial = fraction >= 0.15
+  const empty = 10 - full - (hasPartial ? 1 : 0)
 
   return (
-    <div className="flex items-center gap-0.5">
+    <div className="flex items-center gap-0.5 flex-wrap justify-center">
       {Array.from({ length: full }).map((_, i) => (
         <Star key={`f${i}`} className={`${sizeClass} text-amber-400 fill-amber-400`} />
       ))}
-      {hasHalf && (
+      {hasPartial && (
         <div className="relative">
-          <Star className={`${sizeClass} text-slate-200`} />
-          <div className="absolute inset-0 overflow-hidden w-1/2">
+          <Star className={`${sizeClass} text-slate-200 fill-slate-200`} />
+          <div className="absolute inset-0 overflow-hidden" style={{ width: `${Math.round(fraction * 100)}%` }}>
             <Star className={`${sizeClass} text-amber-400 fill-amber-400`} />
           </div>
         </div>
       )}
-      {Array.from({ length: empty }).map((_, i) => (
-        <Star key={`e${i}`} className={`${sizeClass} text-slate-200`} />
+      {Array.from({ length: Math.max(0, empty) }).map((_, i) => (
+        <Star key={`e${i}`} className={`${sizeClass} text-slate-200 fill-slate-200`} />
       ))}
     </div>
   )

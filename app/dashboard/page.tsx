@@ -10,27 +10,29 @@ import {
 } from 'lucide-react'
 
 function StarsDisplay({ value }: { value: number }) {
-  const mapped = value / 2
-  const full = Math.floor(mapped)
-  const hasHalf = mapped - full >= 0.3
-  const empty = 5 - full - (hasHalf ? 1 : 0)
+  const full = Math.floor(value)
+  const fraction = value - full
+  const hasPartial = fraction >= 0.15
+  const empty = 10 - full - (hasPartial ? 1 : 0)
 
   return (
-    <div className="flex items-center gap-0.5">
+    <div className="flex items-center gap-0.5 flex-wrap justify-center">
       {Array.from({ length: full }).map((_, i) => (
         <Star key={`f${i}`} className="w-5 h-5 text-amber-400 fill-amber-400" />
       ))}
-      {hasHalf && (
+      {hasPartial && (
         <div className="relative">
-          <Star className="w-5 h-5 text-slate-200" />
-          <div className="absolute inset-0 overflow-hidden w-1/2">
+          <Star className="w-5 h-5 text-slate-200 fill-slate-200" />
+          <div className="absolute inset-0 overflow-hidden" style={{ width: `${Math.round(fraction * 100)}%` }}>
             <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
           </div>
         </div>
       )}
-      {Array.from({ length: empty }).map((_, i) => (
-        <Star key={`e${i}`} className="w-5 h-5 text-slate-200" />
+      {Array.from({ length: Math.max(0, empty) }).map((_, i) => (
+        <Star key={`e${i}`} className="w-5 h-5 text-slate-200 fill-slate-200" />
       ))}
+    </div>
+  )
     </div>
   )
 }
